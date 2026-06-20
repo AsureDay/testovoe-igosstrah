@@ -1,0 +1,3 @@
+[submodule "tests/sympy_mcp"]
+	path = tests/sympy_mcp
+	url = https://github.com/sdiehl/sympy-mcp.git
