@@ -53,7 +53,7 @@ class ReActAgent:
                 "    return await orig_asend(self, req, **kw)\n"
                 "httpx.AsyncClient.send = new_asend\n"
                 "from wikipedia_mcp.__main__ import main\n"
-                "sys.argv = ['wikipedia-mcp']\n"
+                "sys.argv = ['wikipedia-mcp', '--language', 'ru']\n"
                 "main()\n"
                 "''')"
             ]
@@ -170,10 +170,10 @@ class ReActAgent:
                         for content in result.content:
                             if content.type == "text":
                                 observation += content.text
-                        mcp_logger.info(f"Res: {observation[:100].replace(chr(10), ' ')}...")
+                        mcp_logger.info(f"Res: {observation.replace(chr(10), ' ')}")
                     except Exception as e:
                         observation = f"Ошибка при вызове инструмента: {str(e)}"
-                        mcp_logger.error(f"Err: {str(e)[:100].replace(chr(10), ' ')}")
+                        mcp_logger.error(f"Err: {str(e).replace(chr(10), ' ')}")
 
                     return {"messages": state["messages"] + [{"role": "user", "content": f"Observation: {observation}"}]}
 
@@ -216,13 +216,13 @@ class ReActAgent:
                         action_match = re.search(r"Action:\s*(\w+)\((.*?)\)", last_message, re.DOTALL | re.IGNORECASE)
 
                     if not action_match:
-                        return "self_check"
+                        return "Validate_Answer"
 
                     tool_name = action_match.group(1).strip().lower()
                     if tool_name == "final_answer":
-                        return "self_check"
+                        return "Validate_Answer"
 
-                    return "tools"
+                    return "Execute_Tool"
 
                 def self_check_router(state: AgentState) -> str:
                     """
@@ -230,35 +230,42 @@ class ReActAgent:
                     """
                     if state["final_answer"]:
                         return "end"
-                    return "agent"
+                    return "LLM_Reasoning"
 
                 workflow = StateGraph(AgentState)
-                workflow.add_node("agent", agent_node)
-                workflow.add_node("tools", tools_node)
-                workflow.add_node("self_check", self_check_node)
+                workflow.add_node("LLM_Reasoning", agent_node)
+                workflow.add_node("Execute_Tool", tools_node)
+                workflow.add_node("Validate_Answer", self_check_node)
 
-                workflow.add_edge(START, "agent")
+                workflow.add_edge(START, "LLM_Reasoning")
                 workflow.add_conditional_edges(
-                    "agent",
+                    "LLM_Reasoning",
                     router,
                     {
-                        "tools": "tools",
-                        "self_check": "self_check",
+                        "Execute_Tool": "Execute_Tool",
+                        "Validate_Answer": "Validate_Answer",
                         "end": END,
-                        "agent": "agent"
+                        "LLM_Reasoning": "LLM_Reasoning"
                     }
                 )
-                workflow.add_edge("tools", "agent")
+                workflow.add_edge("Execute_Tool", "LLM_Reasoning")
                 workflow.add_conditional_edges(
-                    "self_check",
+                    "Validate_Answer",
                     self_check_router,
                     {
                         "end": END,
-                        "agent": "agent"
+                        "LLM_Reasoning": "LLM_Reasoning"
                     }
                 )
 
                 graph = workflow.compile()
+
+                try:
+                    graph_png = graph.get_graph().draw_mermaid_png()
+                    with open(os.path.join(log_dir, "graph.png"), "wb") as f:
+                        f.write(graph_png)
+                except Exception:
+                    pass
 
                 initial_state = {
                     "messages": [{"role": "user", "content": query}],
@@ -287,10 +294,10 @@ class ReActAgent:
                             if "messages" in node_state and node_state["messages"]:
                                 last_msg = node_state["messages"][-1]
                                 msg_content = last_msg.get('content') or ''
-                                msg_short = msg_content[:100].replace('\n', ' ') + "..." if len(msg_content) > 100 else msg_content.replace('\n', ' ')
+                                msg_short = msg_content.replace('\n', ' ')
                                 graph_logger.info(f"Msg: [{last_msg.get('role', 'unknown')}] {msg_short}")
                             if "final_answer" in node_state and node_state["final_answer"]:
-                                ans_short = node_state['final_answer'][:100].replace('\n', ' ') + "..." if len(node_state['final_answer']) > 100 else node_state['final_answer'].replace('\n', ' ')
+                                ans_short = node_state['final_answer'].replace('\n', ' ')
                                 graph_logger.info(f"Final: {ans_short}")
                             
                             current_state.update(node_state)

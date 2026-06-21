@@ -68,6 +68,12 @@ async def run_validation():
     """
     log_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs"))
     os.makedirs(log_dir, exist_ok=True)
+    for filename in os.listdir(log_dir):
+        if filename.endswith(".log"):
+            try:
+                os.remove(os.path.join(log_dir, filename))
+            except OSError:
+                pass
     val_log_path = os.path.join(log_dir, "validation.log")
     val_logger = logging.getLogger("ValidationLog")
     if not val_logger.handlers:
@@ -118,7 +124,7 @@ async def run_validation():
             val_result = await evaluate_answer(inference, query, reference, agent_answer)
             print(f"Score: {val_result.score}, Reason: {val_result.reason}\n")
             
-            ans_short = agent_answer[:100].replace('\n', ' ') + "..." if len(agent_answer) > 100 else agent_answer.replace('\n', ' ')
+            ans_short = agent_answer.replace('\n', ' ')
             val_logger.info(f"Ans: {ans_short} | Score: {val_result.score}")
             
             model_results.append({
