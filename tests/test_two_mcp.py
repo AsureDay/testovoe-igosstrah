@@ -15,15 +15,15 @@ async def main():
             "orig_get = requests.get; "
             "requests.get = lambda url, params=None, **kwargs: orig_get(url, params=params, headers={'User-Agent': 'MyIngosstrahTestWikiMCPClient/1.0 (admin@ingosstrah-test.ru)'}, **kwargs); "
             "from wikipedia_mcp.__main__ import main; "
-            "sys.argv = ['wikipedia-mcp']; "
+            "sys.argv = ['wikipedia-mcp', '--language', 'ru']; "
             "main()"
         ]
     )
 
-    math_server_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "sympy_mcp", "server.py"))
+    math_server_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "calculator_mcp", "calculator_server.py"))
     math_params = StdioServerParameters(
         command=sys.executable,
-        args=[math_server_path]
+        args=[math_server_path, "--stdio"]
     )
 
     print("Connecting to wiki...")

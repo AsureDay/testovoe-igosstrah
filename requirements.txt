@@ -6,3 +6,6 @@ wikipedia-api
 requests
 sympy
 mcp
+fastmcp
+numpy
+scipy

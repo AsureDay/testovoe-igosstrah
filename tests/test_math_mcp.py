@@ -6,15 +6,15 @@ from mcp.client.stdio import stdio_client
 
 async def test_math_mcp():
     """
-    Тестирование работы MCP сервера sympy-mcp.
+    Тестирование работы MCP сервера calculator-mcp-server.
     """
-    server_path = os.path.join(os.path.dirname(__file__), "sympy_mcp", "server.py")
+    server_path = os.path.join(os.path.dirname(__file__), "calculator_mcp", "calculator_server.py")
     server_params = StdioServerParameters(
         command=sys.executable,
-        args=[server_path]
+        args=[server_path, "--stdio"]
     )
 
-    print("⏳ Подключение к серверу sympy-mcp...")
+    print("⏳ Подключение к серверу calculator-mcp-server...")
 
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -27,32 +27,11 @@ async def test_math_mcp():
                 print(f" - {tool.name}")
             print()
                 
-            print("📝 Шаг 1: Создание переменной x...")
-            await session.call_tool(
-                "intro",
-                arguments={
-                    "var_name": "x",
-                    "pos_assumptions": ["real"],
-                    "neg_assumptions": []
-                }
-            )
-
-            print("📝 Шаг 2: Создание выражения x**2 - 4...")
-            expr_res = await session.call_tool(
-                "introduce_expression",
-                arguments={
-                    "expr_str": "x**2 - 4"
-                }
-            )
-            expr_key = expr_res.content[0].text
-            print(f"Идентификатор выражения: {expr_key}")
-
-            print(f"📝 Шаг 3: Решение выражения {expr_key} = 0 относительно x...")
+            print("📝 Шаг 1: Решение уравнения x**2 - 4 = 0...")
             solve_res = await session.call_tool(
-                "solve_algebraically",
+                "solve_equation",
                 arguments={
-                    "expr_key": expr_key,
-                    "solve_for_var_name": "x"
+                    "equation": "x**2 - 4 = 0"
                 }
             )
             

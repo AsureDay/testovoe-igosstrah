@@ -54,19 +54,24 @@ class InferenceModule:
             base_url=base_url
         )
 
-    async def run(self, query: Optional[str] = None, messages: Optional[List[Dict[str, str]]] = None) -> str:
+    async def run(self, query: Optional[str] = None, messages: Optional[List[Dict[str, str]]] = None, response_format: Optional[Dict[str, Any]] = None) -> str:
         if messages is not None:
             formatted_messages = messages
         elif query is not None:
             formatted_messages = [{"role": "user", "content": query}]
         else:
             raise ValueError("Необходимо передать либо query, либо messages")
+        
+        kwargs = {
+            "model": self.model_name,
+            "messages": formatted_messages,
+            "timeout": 300.0
+        }
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=formatted_messages,
-                timeout=60.0
-            )
+            response = await self.client.chat.completions.create(**kwargs)
             content = response.choices[0].message.content
             self._log_request(formatted_messages, content)
             return content
@@ -89,10 +94,10 @@ class InferenceModule:
         
         if messages:
             content = messages[-1].get("content", "")
-            msg_summary = content[:100] + "..." if len(content) > 100 else content
+            msg_summary = content
         else:
             msg_summary = ""
-        resp_summary = (response[:100] + "...") if response and len(response) > 100 else response
+        resp_summary = response
         
         log_entry = {
             "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

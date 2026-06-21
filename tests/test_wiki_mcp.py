@@ -16,7 +16,7 @@ async def test_wikipedia_mcp():
             "orig_get = requests.get; "
             "requests.get = lambda url, params=None, **kwargs: orig_get(url, params=params, headers={'User-Agent': 'MyIngosstrahTestWikiMCPClient/1.0 (admin@ingosstrah-test.ru)'}, **kwargs); "
             "from wikipedia_mcp.__main__ import main; "
-            "sys.argv = ['wikipedia-mcp']; "
+            "sys.argv = ['wikipedia-mcp', '--language', 'ru']; "
             "main()"
         ]
     )

@@ -41,7 +41,29 @@ async def evaluate_answer(
     )
     
     try:
-        response = await validator_module.run(query=prompt)
+        response_format = None
+        model_name = validator_module.model_name.lower()
+        if "gpt" in model_name:
+            response_format = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "validation_result",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "score": {"type": "integer"},
+                            "reason": {"type": "string"}
+                        },
+                        "required": ["score", "reason"],
+                        "additionalProperties": False
+                    }
+                }
+            }
+        elif "gemini" in model_name or "gemma" in model_name or "deepseek" in model_name or "kimi" in model_name:
+            response_format = {"type": "json_object"}
+
+        response = await validator_module.run(query=prompt, response_format=response_format)
         
         json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", response, re.DOTALL)
         if json_match:
@@ -104,36 +126,98 @@ async def run_validation():
             if pos == -1:
                 break
                 
-    models = ["qwen/qwen3.7-plus"]
+    models = [
+        "google/gemma-4-31b-it",
+        "openai/gpt-5.4-mini",
+        "moonshotai/kimi-k2.6",
+    ]
+    
+    PROMPT_BASELINE = (
+        "Вы — агент по решению задач. Вы решаете задачу по шагам, используя доступные инструменты.\n"
+        "На каждом шаге вы должны вывести строго в формате:\n"
+        "Thought: <ваши рассуждения о следующем шаге>\n"
+        "Action: <название_инструмента>: <аргументы в формате JSON>\n\n"
+        "Доступные инструменты:\n"
+        "{tools_text}\n\n"
+        "Когда у вас будет окончательный ответ, выведите:\n"
+        "Thought: <ваши рассуждения>\n"
+        "Action: final_answer: <ваш окончательный ответ пользователю>\n"
+    )
+
+    PROMPT_IMPROVED = (
+        "Вы — продвинутый аналитический агент по решению сложных многошаговых задач. Вы решаете задачу по шагам, используя доступные инструменты.\n\n"
+        "Важные правила:\n"
+        "1. Внимательно анализируйте условие задачи: обращайте внимание на скрытые подвохи, крайние случаи и все аспекты вопроса.\n"
+        "2. Учитывайте реальные физические, биологические и логические ограничения при расчетах и поиске информации.\n"
+        "3. Ваша цель — дать максимально точный и полный ответ на исходный вопрос, доводя рассуждения до логического конца.\n\n"
+        "На каждом шаге вы должны вывести строго в формате:\n"
+        "Thought: <ваши детальные рассуждения о следующем шаге, критическая оценка найденной информации и промежуточных результатов>\n"
+        "Action: <название_инструмента>: <аргументы в формате JSON>\n\n"
+        "Доступные инструменты:\n"
+        "{tools_text}\n\n"
+        "Когда у вас будет окончательный ответ, выведите:\n"
+        "Thought: <ваша финальная проверка ответа на соответствие всем условиям задачи>\n"
+        "Action: final_answer: <ваш полный и окончательный ответ пользователю>\n"
+    )
+
+    prompts = {
+        "baseline": PROMPT_BASELINE,
+        "improved": PROMPT_IMPROVED
+    }
     
     results = {}
-    for model_name in models:
-        print(f"Validating model: {model_name}")
-        inference = InferenceModule(model_name=model_name)
-        agent = ReActAgent(inference_module=inference)
-        
-        model_results = []
-        for case in test_cases:
+    semaphore = asyncio.Semaphore(5)
+    
+    async def process_test_case(case, agent, inference, prompt_name):
+        import uuid
+        run_id = uuid.uuid4().hex[:8]
+        async with semaphore:
             query = case.get("query")
             reference = case.get("answer")
-            print(f"Query: {query}")
+            print(f"[{run_id}][{prompt_name}] Query: {query}")
             
-            agent_answer = await agent.run(query)
-            print(f"Agent Answer: {agent_answer}")
+            agent_answer, used_tools = await agent.run(query, return_tools=True, run_id=run_id)
+            print(f"[{run_id}][{prompt_name}] Agent Answer for '{query}': {agent_answer}")
+            print(f"[{run_id}][{prompt_name}] Used Tools for '{query}': {used_tools}")
             
             val_result = await evaluate_answer(inference, query, reference, agent_answer)
-            print(f"Score: {val_result.score}, Reason: {val_result.reason}\n")
+            print(f"[{run_id}][{prompt_name}] Score: {val_result.score}, Reason: {val_result.reason}")
+            
+            expected_tools = case.get("expected_tools", [])
+            missing_tools = []
+            for t in expected_tools:
+                if t not in used_tools and not (t=="search_wikipedia" and "wikipedia_search" in used_tools):
+                    missing_tools.append(t)
+            
+            tool_score = 1 if not missing_tools else 0
+            tool_reason = "All expected tools used" if not missing_tools else f"Missing tools: {missing_tools}"
+            print(f"[{run_id}][{prompt_name}] Tool Score: {tool_score}, Tool Reason: {tool_reason}\n")
             
             ans_short = agent_answer.replace('\n', ' ')
-            val_logger.info(f"Ans: {ans_short} | Score: {val_result.score}")
+            val_logger.info(f"[{run_id}][{prompt_name}] Ans: {ans_short} | Score: {val_result.score} | ToolScore: {tool_score}")
             
-            model_results.append({
+            return {
                 "query": query,
                 "agent_answer": agent_answer,
                 "score": val_result.score,
-                "reason": val_result.reason
-            })
-        results[model_name] = model_results
+                "reason": val_result.reason,
+                "used_tools": used_tools,
+                "expected_tools": expected_tools,
+                "tool_score": tool_score,
+                "tool_reason": tool_reason
+            }
+
+    for model_name in models:
+        for prompt_name, prompt_template in prompts.items():
+            run_key = f"{model_name}_{prompt_name}"
+            print(f"Validating model: {model_name} with prompt: {prompt_name}")
+            inference = InferenceModule(model_name=model_name)
+            agent = ReActAgent(inference_module=inference, system_prompt_template=prompt_template)
+            
+            tasks = [process_test_case(case, agent, inference, prompt_name) for case in test_cases]
+            model_results = await asyncio.gather(*tasks)
+            
+            results[run_key] = model_results
         
     output_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "validation_results.json"))
     with open(output_path, "w", encoding="utf-8") as f:

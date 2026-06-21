@@ -1,3 +1,3 @@
-[submodule "tests/sympy_mcp"]
-	path = tests/sympy_mcp
-	url = https://github.com/sdiehl/sympy-mcp.git
+[submodule "tests/calculator_mcp"]
+	path = tests/calculator_mcp
+	url = https://github.com/huhabla/calculator-mcp-server.git
