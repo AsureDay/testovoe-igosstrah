@@ -1,0 +1,18 @@
+services:
+  cli:
+    build: .
+    command: python cli.py
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  validate:
+    build: .
+    command: python agent_validation/validate.py
+    env_file:
+      - .env
+    volumes:
+      - .:/app

@@ -48,7 +48,7 @@ class ReActAgent:
                 "import sys, requests, httpx; "
                 "exec('''\n"
                 "orig_get = requests.get\n"
-                "requests.get = lambda url, params=None, **kwargs: orig_get(url, params=params, headers={'User-Agent': 'MyIngosstrahTestWikiMCPClient/1.0 (admin@ingosstrah-test.ru)'}, **kwargs)\n"
+                "requests.get = lambda url, params=None, **kwargs: orig_get(url, params=params, headers={**kwargs.pop('headers', {}), 'User-Agent': 'MyIngosstrahTestWikiMCPClient/1.0 (admin@ingosstrah-test.ru)'}, **kwargs)\n"
                 "orig_send = httpx.Client.send\n"
                 "httpx.Client.send = lambda self, req, **kw: (req.headers.update({'User-Agent': 'MyIngosstrahTestWikiMCPClient/1.0 (admin@ingosstrah-test.ru)'}) or orig_send(self, req, **kw))\n"
                 "orig_asend = httpx.AsyncClient.send\n"

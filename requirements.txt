@@ -9,3 +9,7 @@ mcp
 fastmcp
 numpy
 scipy
+langgraph
+prompt_toolkit
+matplotlib
+wikipedia-mcp
