@@ -41,7 +41,7 @@ print(response)
 Тулзы из вики лучше(скорее всего легче) использовать готовый mcp (https://github.com/Rudra-ravi/wikipedia-mcp) 
 
 
-Для математики решил прикрутить (https://github.com/huhabla/calculator-mcp-server) 
+Для математики решил прикрутить (https://github.com/huhabla/calculator-mcp-server) (пробовал sympy, но хуже работает)
 Вдруг надо будет дифференциальное уравнение решить, хотя скорее всего это пушка по воробьям
 
 

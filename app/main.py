@@ -15,8 +15,20 @@ from app.models.schemas import (
     Artifact, Message, Task, TaskRequest, TaskStatus, TextPart
 )
 
+from contextlib import asynccontextmanager
+
+tasks: dict[str, Task] = {}
+server_agent = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global server_agent
+    model = InferenceModule(inference_type=InferenceType.API_AGENT_PLATFORM)
+    server_agent = ReActAgent(inference_module=model)
+    yield
+
 # === FastAPI Application ===
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 AGENT_CARD = {
     "name": "wiki-research-agent",
@@ -46,14 +58,7 @@ AGENT_CARD = {
     ]
 }
 
-tasks: dict[str, Task] = {}
-server_agent = None
 
-@app.on_event("startup")
-async def startup_event():
-    global server_agent
-    model = InferenceModule(inference_type=InferenceType.API_AGENT_PLATFORM)
-    server_agent = ReActAgent(inference_module=model)
 
 @app.get("/.well-known/agent.json")
 def get_agent_card():
