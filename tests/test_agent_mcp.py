@@ -4,8 +4,8 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from inference import InferenceModule
-from agents.wiki_agent import ReActAgent
+from app.core.inference import InferenceModule
+from app.agents.wiki_agent import ReActAgent
 
 async def test_agent_integration():
     """

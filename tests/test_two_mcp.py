@@ -3,7 +3,7 @@ import sys
 import os
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from inference import InferenceModule
+from app.core.inference import InferenceModule
 
 async def main():
     wiki_params = StdioServerParameters(

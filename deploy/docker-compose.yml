@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    command: python cli.py
+    command: python -m app.main cli
     stdin_open: true
     tty: true
     env_file:
@@ -15,7 +15,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    command: python agent_validation/validate.py
+    command: python -m tests.agent_validation.validate
     env_file:
       - ../.env
     volumes:

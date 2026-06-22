@@ -4,7 +4,7 @@ import sys
 
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from inference import InferenceModule, InferenceType
+from app.core.inference import InferenceModule, InferenceType
 
 
 async def main():

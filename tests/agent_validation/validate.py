@@ -7,10 +7,10 @@ import logging
 from typing import List, Dict, Any
 from pydantic import BaseModel
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from inference import InferenceModule, InferenceType
-from agents.wiki_agent import ReActAgent
+from app.core.inference import InferenceModule, InferenceType
+from app.agents.wiki_agent import ReActAgent
 
 class ValidationResult(BaseModel):
     """
