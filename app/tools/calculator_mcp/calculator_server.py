@@ -1,15 +1,15 @@
-from mcp.server.fastmcp import FastMCP
 import argparse
 import math
-import numpy as np
-from scipy import stats
-from sympy import symbols, solve, sympify, diff, integrate, oo, Sum
 from typing import List, Tuple
+
 import matplotlib.pyplot as plt
-import sympy as sp
 import numpy as np
-import matplotlib.pyplot as plt
+import sympy as sp
+from mcp.server.fastmcp import FastMCP
+from scipy import stats
+from sympy import diff
 from sympy import integrate as sympy_integrate
+from sympy import solve, symbols, sympify
 
 # Create MCP Server
 app = FastMCP(
@@ -715,7 +715,6 @@ def expand(expression: str) -> dict:
         {'result': 'x**2 + 2*x + 1'}
     """
     try:
-        x = sp.Symbol("x")
         expanded_expression = sp.expand(expression)
         return {"result": str(expanded_expression)}
     except Exception as e:
@@ -739,19 +738,22 @@ def factorize(expression: str) -> dict:
         {'result': '(x + 1)**2'}
     """
     try:
-        x = sp.Symbol("x")
         factored_expression = sp.factor(expression)
         return {"result": str(factored_expression)}
     except Exception as e:
         return {"error": str(e)}
 
+
 def main():
     parser = argparse.ArgumentParser(description="Mathematical Calculator MCP Server")
-    parser.add_argument("--stdio", action="store_true", help="Use STDIO transport instead of SSE")
+    parser.add_argument(
+        "--stdio", action="store_true", help="Use STDIO transport instead of SSE"
+    )
     args = parser.parse_args()
-    
+
     transport = "stdio" if args.stdio else TRANSPORT
     app.run(transport=transport)
+
 
 if __name__ == "__main__":
     main()

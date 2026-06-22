@@ -62,7 +62,7 @@ The Mathematical Calculator MCP Server provides the following tools:
 
 Add the server to your Claude Desktop configuration file:
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 Add the following to the `mcpServers` section:

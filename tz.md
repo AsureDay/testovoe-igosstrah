@@ -29,7 +29,7 @@ runner_qwen = InferenceModule(
 пример работы:
 ```python
 response = runner_qwen.run(query="Привет, расскажи о себе")
-print(response) 
+print(response)
 ```
 
 ## Агентный модуль
@@ -38,7 +38,7 @@ print(response)
 
 
 Использует модуль инференса
-Тулзы из вики лучше(скорее всего легче) использовать готовый mcp (https://github.com/Rudra-ravi/wikipedia-mcp) 
+Тулзы из вики лучше(скорее всего легче) использовать готовый mcp (https://github.com/Rudra-ravi/wikipedia-mcp)
 
 
 Для математики решил прикрутить (https://github.com/huhabla/calculator-mcp-server) (пробовал sympy, но хуже работает)
@@ -62,4 +62,3 @@ print(response)
 Перебор производится и по агентам из агентного модуля(если их будет больше чем один)
 
 Сама модель валидатор должна иметь structured output, при генерации оценки ответ ограничен, чтобы не было случайных бесконечных ответов
-
