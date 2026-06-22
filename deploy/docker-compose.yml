@@ -1,18 +1,22 @@
 services:
   cli:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     command: python cli.py
     stdin_open: true
     tty: true
     env_file:
-      - .env
+      - ../.env
     volumes:
-      - .:/app
+      - ..:/app
 
   validate:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     command: python agent_validation/validate.py
     env_file:
-      - .env
+      - ../.env
     volumes:
-      - .:/app
+      - ..:/app

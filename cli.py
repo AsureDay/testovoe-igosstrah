@@ -19,8 +19,17 @@ async def async_main():
     agent = ReActAgent(inference_module=inference, max_loops=args.loops)
     
     if args.query:
-        response = await agent.run(args.query)
-        print(response)
+        ans, mcp_logs = await agent.run(args.query, return_mcp_logs=True)
+        if mcp_logs:
+            print("\n--- MCP Logs ---")
+            for log in mcp_logs:
+                print(f"Tool: {log['tool']}")
+                print(f"Args: {log['args']}")
+                res = str(log['result'])
+                print(f"Result: {res[:500]}..." if len(res) > 500 else f"Result: {res}")
+                print("-" * 20)
+        print("\n--- Final Answer ---")
+        print(ans)
     else:
         session = PromptSession()
         while True:
@@ -31,8 +40,17 @@ async def async_main():
                 if not user_input.strip():
                     continue
                 
-                response = await agent.run(user_input.strip())
-                print(response)
+                ans, mcp_logs = await agent.run(user_input.strip(), return_mcp_logs=True)
+                if mcp_logs:
+                    print("\n--- MCP Logs ---")
+                    for log in mcp_logs:
+                        print(f"Tool: {log['tool']}")
+                        print(f"Args: {log['args']}")
+                        res = str(log['result'])
+                        print(f"Result: {res[:500]}..." if len(res) > 500 else f"Result: {res}")
+                        print("-" * 20)
+                print("\n--- Final Answer ---")
+                print(ans)
             except (KeyboardInterrupt, EOFError):
                 break
 

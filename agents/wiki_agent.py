@@ -24,20 +24,20 @@ class ReActAgent:
         self.system_prompt_template = system_prompt_template
 
 
-    async def run(self, query: str, return_tools: bool = False, run_id: Optional[str] = None) -> str | tuple[str, list[str]]:
+    async def run(self, query: str, return_tools: bool = False, run_id: Optional[str] = None, return_mcp_logs: bool = False) -> Any:
         """
         Запускает цикл ReAct для ответа на запрос пользователя, подключаясь к серверам.
         """
         if not run_id:
             run_id = uuid.uuid4().hex[:8]
         try:
-            return await self._run_graph(query, return_tools, run_id)
+            return await self._run_graph(query, return_tools, run_id, return_mcp_logs)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return await self._run_mock(query, str(e), return_tools, run_id)
+            return await self._run_mock(query, str(e), return_tools, run_id, return_mcp_logs)
 
-    async def _run_graph(self, query: str, return_tools: bool = False, run_id: str = "") -> str | tuple[str, list[str]]:
+    async def _run_graph(self, query: str, return_tools: bool = False, run_id: str = "", return_mcp_logs: bool = False) -> Any:
         """
         Внутренний метод выполнения цикла ReAct с использованием LangGraph и MCP серверов.
         """
@@ -92,6 +92,7 @@ class ReActAgent:
                             loop_count: int
                             final_answer: str
                             query: str
+                            mcp_logs: list
         
                         import logging
                         log_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs"))
@@ -185,12 +186,21 @@ class ReActAgent:
                                 for content in result.content:
                                     if content.type == "text":
                                         observation += content.text
+                                
+                                if tool.name == "get_article" and len(observation) > 2000:
+                                    extract_prompt = f"Извлеки из статьи все ключевые факты, числа, параметры и определения, которые могут быть полезны для ответа на общий запрос '{state['query']}'. Составь подробное резюме.\n\nТекст статьи: {observation}"
+                                    extract_messages = [{"role": "user", "content": extract_prompt}]
+                                    observation = await self.inference_module.run(messages=extract_messages)
+
                                 mcp_logger.info(f"[{run_id}] Res: {observation.replace(chr(10), ' ')}")
                             except Exception as e:
                                 observation = f"Ошибка при вызове инструмента: {str(e)}"
                                 mcp_logger.error(f"[{run_id}] Err: {str(e).replace(chr(10), ' ')}")
         
-                            return {"messages": state["messages"] + [{"role": "user", "content": f"Observation: {observation}"}]}
+                            return {
+                                "messages": state["messages"] + [{"role": "user", "content": f"Observation: {observation}"}],
+                                "mcp_logs": state.get("mcp_logs", []) + [{"tool": tool.name, "args": arguments, "result": observation}]
+                            }
         
                         async def self_check_node(state: AgentState) -> dict:
                             """
@@ -286,7 +296,8 @@ class ReActAgent:
                             "messages": [{"role": "user", "content": query}],
                             "loop_count": 0,
                             "final_answer": "",
-                            "query": query
+                            "query": query,
+                            "mcp_logs": []
                         }
         
                         log_path = os.path.join(log_dir, "graph_state.log")
@@ -322,21 +333,30 @@ class ReActAgent:
         
                         if current_state and current_state.get("final_answer"):
                             ans = current_state["final_answer"]
-                            if return_tools:
-                                used_tools = []
-                                for msg in current_state.get("messages", []):
-                                    if msg.get("role") == "assistant":
-                                        content = msg.get("content") or ""
-                                        action_match = re.search(r"Action:\s*(\w+)", content, re.IGNORECASE)
-                                        if action_match:
-                                            t = action_match.group(1).strip().lower()
-                                            if t != "final_answer" and t not in used_tools:
-                                                used_tools.append(t)
+                            used_tools = []
+                            for msg in current_state.get("messages", []):
+                                if msg.get("role") == "assistant":
+                                    content = msg.get("content") or ""
+                                    action_match = re.search(r"Action:\s*(\w+)", content, re.IGNORECASE)
+                                    if action_match:
+                                        t = action_match.group(1).strip().lower()
+                                        if t != "final_answer" and t not in used_tools:
+                                            used_tools.append(t)
+                            
+                            mcp_logs = current_state.get("mcp_logs", [])
+                            if return_tools and return_mcp_logs:
+                                return ans, used_tools, mcp_logs
+                            elif return_tools:
                                 return ans, used_tools
+                            elif return_mcp_logs:
+                                return ans, mcp_logs
                             return ans
                         
                         err_msg = "Не удалось получить ответ в пределах лимита шагов."
-                        return (err_msg, []) if return_tools else err_msg
+                        if return_tools and return_mcp_logs: return err_msg, [], []
+                        if return_tools: return err_msg, []
+                        if return_mcp_logs: return err_msg, []
+                        return err_msg
 
     async def self_check(self, query: str, answer: str) -> bool:
         """
@@ -361,9 +381,12 @@ class ReActAgent:
         except Exception:
             return False
 
-    async def _run_mock(self, query: str, error_msg: str, return_tools: bool = False, run_id: str = "") -> str | tuple[str, list[str]]:
+    async def _run_mock(self, query: str, error_msg: str, return_tools: bool = False, run_id: str = "", return_mcp_logs: bool = False) -> Any:
         """
         Возвращает сообщение об ошибке при недоступности внешнего API или сбое графа.
         """
         ans = f"[{run_id}] Ошибка API ({error_msg}). Не удалось получить ответ."
-        return (ans, []) if return_tools else ans
+        if return_tools and return_mcp_logs: return ans, [], []
+        if return_tools: return ans, []
+        if return_mcp_logs: return ans, []
+        return ans
