@@ -140,8 +140,9 @@ async def run_validation():
 
     models = [
         "google/gemma-4-31b-it",
-        "openai/gpt-5.4-mini",
-        "moonshotai/kimi-k2.6",
+        # убрал другие модели чтобы не сжигать много текенов на валидации
+        # "openai/gpt-5.4-mini",
+        # "moonshotai/kimi-k2.6",
     ]
 
     PROMPT_BASELINE = (
@@ -170,7 +171,7 @@ async def run_validation():
         "Когда у вас будет окончательный ответ, выведите:\n"
         "Thought: <ваша финальная проверка ответа на соответствие всем условиям задачи>\n"
         "Action: final_answer: <ваш полный и окончательный ответ пользователю>\n"
-    )
+    )  # на практике оказался хуже, но как пример промт инженеринга и прогона тестов на разных базовых промтах норм
 
     prompts = {"baseline": PROMPT_BASELINE, "improved": PROMPT_IMPROVED}
 
@@ -201,6 +202,8 @@ async def run_validation():
                 f"[{run_id}][{prompt_name}] Score: {val_result.score}, Reason: {val_result.reason}"
             )
 
+            # добавил ожидаемые инструменты, но лень было заполнять датасет :)
+            # добавил больше для того чтобы показать что можно оценивать и корректность вызова тулзов, правда лучше сделать это более правильно
             expected_tools = case.get("expected_tools", [])
             missing_tools = []
             for t in expected_tools:
